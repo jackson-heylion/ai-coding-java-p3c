@@ -23,3 +23,4 @@ Search `docs/rules/deep-reference.md` only for:
 
 - `Database: correctness and concurrency`
 - `Database: performance and rollout`
+- `Database: SQL null and index semantics`
