@@ -97,19 +97,49 @@ Prefer the narrowest useful test scope:
 
 Test behavior and important invariants rather than implementation details.
 
-### 6. Validate
+### 6. Validate locally
 
-Run repository-provided commands when available. For Maven projects, typical checks are:
+Do not rely on CI to validate the change.
+
+When `scripts/verify-java.sh` exists, use it:
 
 ```bash
-mvn -q -DskipTests compile
-mvn -q test
+# During implementation
+bash scripts/verify-java.sh fast
+
+# Before completing a normal task
+bash scripts/verify-java.sh full
+```
+
+When the project has the optional `p3c-local` Maven profile and P3C-PMD is compatible with its Java syntax, also run:
+
+```bash
+bash scripts/verify-java.sh p3c
+```
+
+For a broad/risky change, the combined local check is:
+
+```bash
+bash scripts/verify-java.sh all
+```
+
+If the script is not available, prefer the project's Maven wrapper:
+
+```bash
+./mvnw -q verify
+```
+
+and fall back to:
+
+```bash
 mvn -q verify
 ```
 
-If working in one module, run the narrowest module command first.
+If working in one module, run narrow module tests first for feedback, then perform the appropriate root-level local verification before finishing.
 
-When P3C PMD is enabled, fix violations introduced by the current change. Do not broaden scope into mass cleanup of historical violations unless requested.
+Fix failures and P3C/static-analysis violations introduced by the current change. Do not broaden scope into mass cleanup of historical violations unless requested.
+
+P3C-PMD 2.1.1 uses an older PMD/JDK toolchain. If it cannot parse valid modern Java syntax, report that limitation and continue to enforce `.ai/rules/p3c.md` at the AI/review layer rather than rewriting code to satisfy an obsolete parser.
 
 ### 7. Review the diff
 
