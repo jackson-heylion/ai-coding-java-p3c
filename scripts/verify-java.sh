@@ -39,6 +39,10 @@ set_scope() {
   [[ -n "$modules" ]] && scope_args=(-pl "$modules" -am)
 }
 
+has_git_worktree() {
+  command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1
+}
+
 changed_files() {
   {
     git diff --name-only --diff-filter=ACMRD HEAD -- 2>/dev/null || true
@@ -73,8 +77,14 @@ nearest_module() {
 auto_scope() {
   local files file module
   local modules=()
-  files="$(changed_files)"
 
+  if ! has_git_worktree; then
+    echo "INFO: Git working tree unavailable; using full Maven reactor."
+    set_scope ""
+    return 0
+  fi
+
+  files="$(changed_files)"
   if [[ -z "$files" ]]; then
     echo "INFO: no working-tree changes; nothing to validate."
     return 10
@@ -87,7 +97,7 @@ auto_scope() {
 
   while IFS= read -r file; do
     case "$file" in
-      pom.xml|.mvn/*|mvnw|mvnw.cmd|config/pmd/*|scripts/verify-java.sh)
+      pom.xml|.mvn/*|mvnw|mvnw.cmd|config/pmd/*|scripts/verify-java.sh|scripts/verify-java.ps1|scripts/verify-java.cmd)
         set_scope ""
         return 0
         ;;
@@ -115,9 +125,7 @@ mvn_run() {
   run "${MVN[@]}" "${BASE_ARGS[@]}" "${scope_args[@]}" "$@"
 }
 
-run_compile() {
-  mvn_run -DskipTests compile
-}
+run_compile() { mvn_run -DskipTests compile; }
 
 run_test() {
   local args=(test)
@@ -129,41 +137,22 @@ run_test() {
 
 run_static() {
   require_pmd_profile
-  # Direct goal: no compile/test/verify lifecycle. PMD cache handles unchanged files.
   mvn_run -Pp3c-local -DskipTests pmd:check
 }
 
-run_verify() {
-  mvn_run verify
-}
+run_verify() { mvn_run verify; }
 
 run_all() {
   require_pmd_profile
-  # One lifecycle only: tests + normal verify plugins + PMD bound to verify.
   mvn_run -Pp3c-local verify
 }
 
 case "$MODE" in
-  compile)
-    set_scope
-    run_compile
-    ;;
-  test|fast)
-    set_scope
-    run_test
-    ;;
-  static|p3c)
-    set_scope
-    run_static
-    ;;
-  verify|full)
-    set_scope
-    run_verify
-    ;;
-  all)
-    set_scope
-    run_all
-    ;;
+  compile) set_scope; run_compile ;;
+  test|fast) set_scope; run_test ;;
+  static|p3c) set_scope; run_static ;;
+  verify|full) set_scope; run_verify ;;
+  all) set_scope; run_all ;;
   auto)
     if auto_scope; then
       if has_pmd_profile; then
@@ -185,7 +174,7 @@ Usage:
   bash scripts/verify-java.sh [auto|compile|test|static|verify|all] [project-dir]
 
 Modes:
-  auto     inspect git changes; skip docs-only; scope modules; run one final verify (+ PMD if configured)
+  auto     inspect git changes; skip docs-only; scope modules; safely fall back to full reactor
   compile  compile only
   test     test once (already includes compilation); TEST=FooTest narrows tests
   static   direct PMD check only; no Maven lifecycle/tests
@@ -198,15 +187,7 @@ Optional scope/performance variables:
   MODULES=module-a,module-b   use Maven -pl ... -am
   TEST=OrderServiceTest      run focused Surefire test(s)
   MAVEN_THREADS=1C           opt into Maven parallel reactor execution
-
-Examples:
-  TEST=OrderServiceTest bash scripts/verify-java.sh test
-  MODULES=order-server bash scripts/verify-java.sh static
-  bash scripts/verify-java.sh auto
 EOF
     ;;
-  *)
-    echo "ERROR: unknown mode '$MODE'. Use --help." >&2
-    exit 2
-    ;;
+  *) echo "ERROR: unknown mode '$MODE'. Use --help." >&2; exit 2 ;;
 esac
