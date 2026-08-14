@@ -1,6 +1,6 @@
 ---
 name: java-development
-description: Implement, refactor, or review Java code using repository conventions, modern Java/Spring Boot practices, and the adapted Alibaba P3C baseline.
+description: Implement, refactor, or review Java code using repository conventions, modern Java/Spring Boot practices, domain-specific rules, and the adapted Alibaba P3C baseline.
 ---
 
 # Java Development Skill
@@ -9,14 +9,21 @@ Use this skill for Java implementation, refactoring, bug fixing, and code review
 
 ## Required rules
 
-Before editing Java code, read:
+Before editing Java code, always read:
 
 1. `AGENTS.md`
 2. `.ai/rules/java.md`
-3. `.ai/rules/spring-boot.md` when Spring/Spring Boot is involved
-4. `.ai/rules/p3c.md`
+3. `.ai/rules/p3c.md`
 
-Treat repository-local architecture and explicit task requirements as higher priority than generic P3C guidance.
+Then load only the domain rules relevant to the change:
+
+- Spring/Spring Boot: `.ai/rules/spring-boot.md`
+- persistence/SQL/schema/transactions: `.ai/rules/database.md`
+- HTTP/RPC/API contracts: `.ai/rules/api.md`
+- authentication/authorization/secrets/untrusted input: `.ai/rules/security.md`
+- tests or behavior changes requiring tests: `.ai/rules/testing.md`
+
+Treat repository-local architecture and explicit task requirements as higher priority than generic P3C guidance. Security, correctness, integrity, and explicit compatibility requirements must not be weakened for style consistency.
 
 ## Workflow
 
@@ -30,12 +37,26 @@ Inspect the smallest useful set of nearby files to understand:
 - persistence style;
 - error handling;
 - transaction boundaries;
+- authentication/authorization/data scope;
 - test conventions;
 - existing utilities/abstractions.
 
 Do not invent a new pattern before checking whether the repository already has one.
 
-### 2. Identify correctness constraints
+### 2. Select applicable rules
+
+Classify the change before implementation.
+
+Examples:
+
+- pure domain calculation -> Java + P3C + testing;
+- repository query -> Java + P3C + database + testing;
+- REST endpoint -> Java + P3C + Spring + API + testing;
+- authenticated database-backed REST endpoint -> Java + P3C + Spring + API + security + database + testing.
+
+Do not load unrelated rule files merely because they exist.
+
+### 3. Identify correctness constraints
 
 Before implementation, identify applicable constraints such as:
 
@@ -47,35 +68,36 @@ Before implementation, identify applicable constraints such as:
 - ordering/uniqueness;
 - retry semantics;
 - backward compatibility;
-- data migration/serialization compatibility.
+- data migration/serialization compatibility;
+- sensitive-data handling.
 
-### 3. Implement narrowly
+### 4. Implement narrowly
 
 While editing:
 
 - make the smallest coherent change that solves the task;
 - preserve public behavior not targeted by the task;
-- follow Java/Spring/P3C rules while writing;
+- follow all applicable rules while writing;
 - avoid speculative abstractions;
 - avoid unrelated formatting/refactoring;
 - reuse existing domain vocabulary and utilities.
 
 Do not create `Service`/`ServiceImpl` or `DAO`/`DAOImpl` pairs solely to satisfy historical P3C conventions.
 
-### 4. Test behavior
+### 5. Test behavior
 
-Add/update tests when behavior changes and a relevant testing pattern exists.
+When behavior changes, consult `.ai/rules/testing.md` and add/update tests where practical.
 
 Prefer the narrowest useful test scope:
 
 1. unit test;
 2. layer/slice test;
 3. integration test;
-4. full application test only when necessary.
+4. full application/end-to-end test only when necessary.
 
-Test behavior and important edge cases rather than implementation details.
+Test behavior and important invariants rather than implementation details.
 
-### 5. Validate
+### 6. Validate
 
 Run repository-provided commands when available. For Maven projects, typical checks are:
 
@@ -89,15 +111,17 @@ If working in one module, run the narrowest module command first.
 
 When P3C PMD is enabled, fix violations introduced by the current change. Do not broaden scope into mass cleanup of historical violations unless requested.
 
-### 6. Review the diff
+### 7. Review the diff
 
 Before finishing, review the final diff for:
 
 - accidental API changes;
 - missing null/error handling;
 - transaction/concurrency mistakes;
+- authorization or tenant-scope bypass;
 - unsafe SQL/input handling;
 - sensitive logging;
+- missing regression tests;
 - dead code/imports;
 - inconsistent naming;
 - unnecessary abstractions;
@@ -112,8 +136,9 @@ When the task is a review, prioritize findings:
 3. concurrency/transaction safety;
 4. compatibility/contracts;
 5. performance/resource risks;
-6. maintainability;
-7. P3C/style.
+6. meaningful test gaps;
+7. maintainability;
+8. P3C/style.
 
 For each meaningful finding, state:
 
