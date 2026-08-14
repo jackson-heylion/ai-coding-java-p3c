@@ -39,6 +39,7 @@ function Install-Tree([string]$RelativePath) {
     }
 }
 
+Install-File '.gitattributes'
 Install-File 'AGENTS.md'
 Install-Tree '.ai'
 Install-Tree '.agents'
