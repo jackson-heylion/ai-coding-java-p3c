@@ -88,15 +88,20 @@ Use `--force` / `-Force` only when template-managed files should intentionally b
 ## Installed files
 
 ```text
+.gitattributes
 AGENTS.md
 .ai/rules/
 .agents/skills/java-development/SKILL.md
+docs/rules/deep-reference.md
 config/pmd/p3c.xml
 config/pmd/exclude-pmd.properties
+examples/maven/p3c-local-profile.xml
 scripts/verify-java.sh
 scripts/verify-java.ps1
 scripts/verify-java.cmd
 ```
+
+The installer is self-contained: every file referenced by `AGENTS.md` or the verification scripts is copied into the target project. If an existing `.gitattributes` is preserved, merge the script EOL rules manually.
 
 ## Local verification: do only useful work
 
