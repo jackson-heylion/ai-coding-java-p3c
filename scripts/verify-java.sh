@@ -140,6 +140,11 @@ run_static() {
   mvn_run -Pp3c-local -DskipTests pmd:check
 }
 
+run_audit() {
+  require_pmd_profile
+  mvn_run -Pp3c-local -DskipTests -Dpmd.failOnViolation=false pmd:check
+}
+
 run_verify() { mvn_run verify; }
 
 run_all() {
@@ -151,6 +156,7 @@ case "$MODE" in
   compile) set_scope; run_compile ;;
   test|fast) set_scope; run_test ;;
   static|p3c) set_scope; run_static ;;
+  audit) set_scope; run_audit ;;
   verify|full) set_scope; run_verify ;;
   all) set_scope; run_all ;;
   auto)
@@ -171,13 +177,14 @@ case "$MODE" in
 Fast local Java verification
 
 Usage:
-  bash scripts/verify-java.sh [auto|compile|test|static|verify|all] [project-dir]
+  bash scripts/verify-java.sh [auto|compile|test|static|audit|verify|all] [project-dir]
 
 Modes:
   auto     inspect git changes; skip docs-only; scope modules; safely fall back to full reactor
   compile  compile only
   test     test once (already includes compilation); TEST=FooTest narrows tests
-  static   direct PMD check only; no Maven lifecycle/tests
+  static   direct PMD check only; violations fail
+  audit    direct PMD check for legacy adoption; violations are reported but do not fail
   verify   normal Maven verify
   all      one Maven verify with p3c-local enabled (tests + verify + PMD once)
 
