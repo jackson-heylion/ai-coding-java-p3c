@@ -6,6 +6,7 @@ Load only for HTTP/RPC contracts, DTOs, serialization, pagination, or externally
 
 - Treat consumed API behavior as a contract; prefer additive evolution and preserve compatibility unless breaking change is requested.
 - Use boundary DTOs instead of exposing persistence entities by default.
+- Preserve presence semantics: when absent/null differs from explicit `0`, `false`, empty, or another default value, use a presence-aware/nullable representation and avoid field initializers that silently collapse those states.
 - Validate request structure at the boundary; derive authoritative user/tenant/ownership fields server-side.
 - Keep HTTP/RPC method, status, error, timeout, retry, and failure semantics explicit and consistent with the repository.
 - Never expose stack traces, SQL, secrets, internal hosts/paths, or framework internals to clients.
@@ -18,4 +19,4 @@ Load only for HTTP/RPC contracts, DTOs, serialization, pagination, or externally
 
 ## Deeper guidance
 
-Search `docs/rules/deep-reference.md` only for `API: compatibility and idempotency`.
+Search `docs/rules/deep-reference.md` only for `API: compatibility, presence, idempotency`.
