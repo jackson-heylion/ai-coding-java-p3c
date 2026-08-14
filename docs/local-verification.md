@@ -15,6 +15,7 @@ Local only; no CI is required. Use the native launcher for the current OS. Mode 
 | syntax/compile only | `compile` | tests + PMD + verify plugins |
 | behavior feedback | `test` | separate compile + verify + PMD |
 | static feedback | `static` | compile/test/verify lifecycle |
+| legacy PMD inventory | `audit` | build failure on historical violations |
 | normal final check | `auto` | unrelated modules/docs-only builds |
 | explicit full check | `all` | duplicate verify + PMD lifecycle |
 
@@ -56,13 +57,15 @@ If Git is unavailable or the directory is not a Git working tree, `auto` safely 
 
 `static` runs direct `pmd:check`, not Maven `verify`. PMD incremental analysis is enabled at `target/pmd/pmd.cache`, so unchanged files can reuse cached results.
 
+For existing-project onboarding, `audit` runs the same direct scan with `pmd.failOnViolation=false`. Findings are reported without failing solely because of violations; parser/tooling failures are still errors. Reviewed historical class/rule pairs can be listed in `config/pmd/exclude-pmd.properties`.
+
 Local-speed defaults:
 
 - test sources excluded from PMD;
 - XRef linking disabled;
 - verbose success output disabled;
 - type resolution remains enabled;
-- PMD errors/violations still fail the check.
+- normal PMD errors/violations still fail `static`/`auto`/`all`.
 
 Avoid routine `mvn clean`; deleting `target` also deletes build/PMD caches.
 
