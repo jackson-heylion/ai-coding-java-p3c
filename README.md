@@ -148,10 +148,15 @@ Always load only `AGENTS.md` and `.ai/rules/core.md`, then route by task:
 | HTTP/RPC/DTO/serialization | `api.md` |
 | auth/input/secrets/tenant | `security.md` |
 | behavior/tests | `testing.md` |
+| Maven dependency/plugin/BOM/version | `maven.md` |
+| Java language/library/numeric/concurrency edge | `java.md` |
 | explicit P3C interpretation | `p3c.md` |
-| Java language/library edge case | `java.md` |
 
 If more detail is needed, search one heading in `docs/rules/deep-reference.md` instead of reading it all.
+
+## Modernized P3C coverage
+
+High-value P3C intent retained for modern projects includes precise decimal/equality handling, safe collection/comparator behavior, reliable lock/signal cleanup, explicit SQL null/index semantics, API presence semantics, reproducible Maven dependency governance, sensitive-output minimization, and abuse/replay controls. Historical architecture/style mandates are not copied mechanically.
 
 ## Java / static-analysis baseline
 
