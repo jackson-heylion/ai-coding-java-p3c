@@ -41,7 +41,7 @@ set_scope() {
 
 changed_files() {
   {
-    git diff --name-only --diff-filter=ACMR HEAD -- 2>/dev/null || true
+    git diff --name-only --diff-filter=ACMRD HEAD -- 2>/dev/null || true
     git ls-files --others --exclude-standard 2>/dev/null || true
   } | sed '/^$/d' | sort -u
 }
