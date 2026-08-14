@@ -19,7 +19,7 @@ Java syntax used by your project before treating this profile as mandatory.
                 <artifactId>maven-pmd-plugin</artifactId>
                 <version>3.11.0</version>
                 <configuration>
-                    <sourceEncoding>${project.build.sourceEncoding}</sourceEncoding>
+                    <sourceEncoding>UTF-8</sourceEncoding>
                     <printFailingErrors>true</printFailingErrors>
                     <failOnViolation>true</failOnViolation>
                     <rulesets>
