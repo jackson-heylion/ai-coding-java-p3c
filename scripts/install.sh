@@ -20,11 +20,6 @@ Modes:
 Options:
   --force      overwrite template-managed files
   --patch-pom  add the p3c-local profile to pom.xml (creates a .ai-p3c.bak backup)
-
-Examples:
-  bash scripts/install.sh new ../my-service
-  bash scripts/install.sh existing ../legacy-service
-  bash scripts/install.sh existing ../legacy-service --patch-pom
 EOF
 }
 
@@ -70,6 +65,7 @@ install_file "AGENTS.md"
 install_tree ".ai"
 install_tree ".agents"
 install_file "config/pmd/p3c.xml"
+install_file "config/pmd/exclude-pmd.properties"
 install_file "scripts/verify-java.sh"
 install_file "scripts/verify-java.ps1"
 install_file "scripts/verify-java.cmd"
@@ -118,16 +114,36 @@ cat <<EOF
 
 Installed into: $TARGET
 Mode: $MODE
+EOF
+
+if [[ -f "$TARGET/pom.xml" ]] && grep -Eq '<id>[[:space:]]*p3c-local[[:space:]]*</id>' "$TARGET/pom.xml"; then
+  if [[ "$MODE" == "existing" ]]; then
+    cat <<'EOF'
+
+Recommended first run for an existing project:
+  macOS/Linux: bash scripts/verify-java.sh audit
+  Windows:     scripts\verify-java.cmd audit
+
+Then use auto for normal AI coding:
+  macOS/Linux: bash scripts/verify-java.sh auto
+  Windows:     scripts\verify-java.cmd auto
+EOF
+  else
+    cat <<'EOF'
 
 Next:
   macOS/Linux: bash scripts/verify-java.sh auto
-  Windows:     scripts\\verify-java.cmd auto
+  Windows:     scripts\verify-java.cmd auto
 EOF
-
-if [[ -f "$TARGET/pom.xml" ]] && ! grep -Eq '<id>[[:space:]]*p3c-local[[:space:]]*</id>' "$TARGET/pom.xml"; then
+  fi
+else
   cat <<'EOF'
 
+Next:
+  macOS/Linux: bash scripts/verify-java.sh auto
+  Windows:     scripts\verify-java.cmd auto
+
 Static analysis is not enabled yet.
-Either rerun with --patch-pom or merge examples/maven/p3c-local-profile.xml into <profiles> manually.
+Rerun with --patch-pom or merge examples/maven/p3c-local-profile.xml into <profiles> manually.
 EOF
 fi
