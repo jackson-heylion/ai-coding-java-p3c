@@ -4,6 +4,17 @@
 
 For Java work read `.ai/rules/core.md`; load domain rules only when triggered. Use `.agents/skills/java-development/SKILL.md` for workflow. Search one heading in `docs/rules/deep-reference.md` only when concise rules are insufficient.
 
+Common routing:
+
+- Spring → `.ai/rules/spring-boot.md`
+- SQL/persistence → `.ai/rules/database.md`
+- HTTP/RPC/DTO → `.ai/rules/api.md`
+- security/input/tenant/secrets → `.ai/rules/security.md`
+- behavior/tests → `.ai/rules/testing.md`
+- Maven/dependency/plugin/BOM → `.ai/rules/maven.md`
+- Java numeric/concurrency/library edge cases → `.ai/rules/java.md`
+- explicit P3C interpretation → `.ai/rules/p3c.md`
+
 ## Priority
 
 1. explicit requirement
@@ -16,7 +27,7 @@ Java 17/21 standard syntax is first-class. Use PMD 7 only.
 
 ## Project-specific additions
 
-Keep only constraints that materially differ from the shared baseline, e.g. persistence technology, response/error contract, transaction/tenant convention, logging/trace convention, or module compatibility requirements.
+Keep only constraints that materially differ from the shared baseline, e.g. persistence technology, response/error contract, transaction/tenant convention, logging/trace convention, dependency-management convention, or module compatibility requirements.
 
 ## Verification budget
 
@@ -36,4 +47,4 @@ Modes:
 - `auto` — normal final check
 - `all` — broad/high-risk/root build change
 
-Use `TEST` and `MODULES` environment variables to narrow scope. Do not run every mode as a ritual. Docs/rules-only changes need no Java build. Fix current-change failures, not unrelated legacy debt.
+Use `TEST` and `MODULES` environment variables to narrow scope. For dependency changes, inspect the affected dependency graph only when transitive/version mediation matters. Do not run every mode as a ritual. Docs/rules-only changes need no Java build. Fix current-change failures, not unrelated legacy debt.
