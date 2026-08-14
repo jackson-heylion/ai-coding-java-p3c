@@ -1,31 +1,48 @@
 <!--
 Copy this <profile> into your project's <profiles> section.
 
-Run locally with:
+This profile intentionally DOES NOT use com.alibaba.p3c:p3c-pmd.
+P3C is the guideline source; PMD 7 provides the maintained Java parser and rules.
+
+Local run:
   mvn -Pp3c-local -DskipTests verify
 
 Or, after copying scripts/verify-java.sh into the project:
   bash scripts/verify-java.sh p3c
 
-P3C-PMD 2.1.1 is based on an older PMD/JDK toolchain. Validate it against the
-Java syntax used by your project before treating this profile as mandatory.
+Recommended runtime:
+- Java project target: 17 or 21
+- Run Maven with the matching JDK/toolchain where practical
+- Maven PMD Plugin: 3.28.0
+- PMD runtime: 7.26.0
 -->
 <profile>
     <id>p3c-local</id>
+
+    <properties>
+        <pmd.version>7.26.0</pmd.version>
+    </properties>
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-pmd-plugin</artifactId>
-                <version>3.11.0</version>
+                <version>3.28.0</version>
+
                 <configuration>
-                    <sourceEncoding>UTF-8</sourceEncoding>
+                    <inputEncoding>${project.build.sourceEncoding}</inputEncoding>
                     <printFailingErrors>true</printFailingErrors>
+                    <verbose>true</verbose>
                     <failOnViolation>true</failOnViolation>
+                    <failurePriority>5</failurePriority>
+                    <skipPmdError>false</skipPmdError>
+                    <typeResolution>true</typeResolution>
                     <rulesets>
                         <ruleset>${maven.multiModuleProjectDirectory}/config/pmd/p3c.xml</ruleset>
                     </rulesets>
                 </configuration>
+
                 <executions>
                     <execution>
                         <id>p3c-local-check</id>
@@ -35,11 +52,31 @@ Java syntax used by your project before treating this profile as mandatory.
                         </goals>
                     </execution>
                 </executions>
+
+                <!--
+                  maven-pmd-plugin 3.28.0 ships PMD 7.17.0 by default.
+                  Override all PMD runtime modules together so the parser/rules stay aligned.
+                -->
                 <dependencies>
                     <dependency>
-                        <groupId>com.alibaba.p3c</groupId>
-                        <artifactId>p3c-pmd</artifactId>
-                        <version>2.1.1</version>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-core</artifactId>
+                        <version>${pmd.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-java</artifactId>
+                        <version>${pmd.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-javascript</artifactId>
+                        <version>${pmd.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>net.sourceforge.pmd</groupId>
+                        <artifactId>pmd-jsp</artifactId>
+                        <version>${pmd.version}</version>
                     </dependency>
                 </dependencies>
             </plugin>
