@@ -1,6 +1,6 @@
 ---
 name: java-development
-description: Implement, refactor, or review Java code using repository conventions, modern Java/Spring Boot practices, domain-specific rules, and the adapted Alibaba P3C baseline.
+description: Implement, refactor, or review Java 17/21 code using repository conventions, modern Java/Spring Boot practices, domain-specific rules, the adapted Alibaba P3C baseline, and PMD 7 local verification.
 ---
 
 # Java Development Skill
@@ -24,6 +24,14 @@ Then load only the domain rules relevant to the change:
 - tests or behavior changes requiring tests: `.ai/rules/testing.md`
 
 Treat repository-local architecture and explicit task requirements as higher priority than generic P3C guidance. Security, correctness, integrity, and explicit compatibility requirements must not be weakened for style consistency.
+
+## Java platform
+
+Java 17 and Java 21 are first-class targets.
+
+Use modern language/API features when they make the implementation safer or clearer. Do not downgrade records, sealed types, switch expressions, pattern matching, record patterns, or deliberate Java 21 concurrency APIs to older syntax merely for tooling compatibility.
+
+The executable analyzer is PMD 7. Do not introduce Alibaba `p3c-pmd`, PMD 6, or another legacy parser as a fallback.
 
 ## Workflow
 
@@ -78,6 +86,7 @@ While editing:
 - make the smallest coherent change that solves the task;
 - preserve public behavior not targeted by the task;
 - follow all applicable rules while writing;
+- use appropriate Java 17/21 idioms;
 - avoid speculative abstractions;
 - avoid unrelated formatting/refactoring;
 - reuse existing domain vocabulary and utilities.
@@ -107,39 +116,27 @@ When `scripts/verify-java.sh` exists, use it:
 # During implementation
 bash scripts/verify-java.sh fast
 
-# Before completing a normal task
+# Normal Maven lifecycle
 bash scripts/verify-java.sh full
-```
 
-When the project has the optional `p3c-local` Maven profile and P3C-PMD is compatible with its Java syntax, also run:
-
-```bash
+# PMD 7 / P3C-aligned static analysis
 bash scripts/verify-java.sh p3c
-```
 
-For a broad/risky change, the combined local check is:
-
-```bash
+# Final combined local verification
 bash scripts/verify-java.sh all
 ```
 
-If the script is not available, prefer the project's Maven wrapper:
+`all` requires the `p3c-local` profile. Missing static-analysis configuration is a tooling problem, not a reason to silently skip analysis.
 
-```bash
-./mvnw -q verify
-```
+The script detects Java 17/21 from Maven compiler properties and passes the language level to PMD when possible.
 
-and fall back to:
-
-```bash
-mvn -q verify
-```
+If the script is unavailable, use the Maven wrapper/project commands and explicitly run the configured PMD 7 profile.
 
 If working in one module, run narrow module tests first for feedback, then perform the appropriate root-level local verification before finishing.
 
-Fix failures and P3C/static-analysis violations introduced by the current change. Do not broaden scope into mass cleanup of historical violations unless requested.
+Fix failures and static-analysis violations introduced by the current change. Do not broaden scope into mass cleanup of historical violations unless requested.
 
-P3C-PMD 2.1.1 uses an older PMD/JDK toolchain. If it cannot parse valid modern Java syntax, report that limitation and continue to enforce `.ai/rules/p3c.md` at the AI/review layer rather than rewriting code to satisfy an obsolete parser.
+A PMD parser error must be investigated as a tooling failure. Never rewrite valid Java 17/21 syntax into Java 8-era code to accommodate obsolete tooling.
 
 ### 7. Review the diff
 
