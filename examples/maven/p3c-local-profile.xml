@@ -7,6 +7,9 @@ No Alibaba p3c-pmd / PMD 6 runtime is used.
 Fast static-only run:
   mvn -Pp3c-local -DskipTests pmd:check
 
+Existing-project audit without build failure:
+  mvn -Pp3c-local -DskipTests -Dpmd.failOnViolation=false pmd:check
+
 Single-pass full local validation:
   mvn -Pp3c-local verify
 -->
@@ -15,6 +18,7 @@ Single-pass full local validation:
 
     <properties>
         <pmd.version>7.26.0</pmd.version>
+        <pmd.failOnViolation>true</pmd.failOnViolation>
     </properties>
 
     <build>
@@ -29,6 +33,7 @@ Single-pass full local validation:
                     <rulesets>
                         <ruleset>${maven.multiModuleProjectDirectory}/config/pmd/p3c.xml</ruleset>
                     </rulesets>
+                    <excludeFromFailureFile>${maven.multiModuleProjectDirectory}/config/pmd/exclude-pmd.properties</excludeFromFailureFile>
 
                     <!-- Local-speed defaults -->
                     <analysisCache>true</analysisCache>
@@ -37,9 +42,9 @@ Single-pass full local validation:
                     <linkXRef>false</linkXRef>
                     <verbose>false</verbose>
 
-                    <!-- Correctness -->
+                    <!-- Correctness; CLI may override pmd.failOnViolation for audit mode. -->
                     <typeResolution>true</typeResolution>
-                    <failOnViolation>true</failOnViolation>
+                    <failOnViolation>${pmd.failOnViolation}</failOnViolation>
                     <failurePriority>5</failurePriority>
                     <printFailingErrors>true</printFailingErrors>
                     <skipPmdError>false</skipPmdError>
