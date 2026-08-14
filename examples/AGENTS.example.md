@@ -1,12 +1,13 @@
 # Project AI Instructions
 
-This is an example of how a real Java/Spring Boot project can consume the rules from `ai-coding-java-p3c`.
+This is an example of how a real Java/Spring Boot Maven project can consume the rules from `ai-coding-java-p3c`.
 
 ## Project baseline
 
 - Java: 17+
 - Spring Boot: 3+
 - Build: Maven
+- Verification: local only
 
 ## Coding standards
 
@@ -66,17 +67,32 @@ P3C is a baseline, not permission to rewrite established project architecture.
 - Identify transaction, authorization/data-scope, compatibility, concurrency/idempotency, and test constraints relevant to the change.
 - Reuse existing repository patterns.
 
-## Verification
+## Local verification
 
-For Java changes, run the relevant project commands. Typical Maven flow:
+Prefer the repository script:
 
 ```bash
-mvn -q -DskipTests compile
-mvn -q test
-mvn -q verify
+# fast development feedback
+bash scripts/verify-java.sh fast
+
+# normal completion check
+bash scripts/verify-java.sh full
 ```
 
-Run the narrowest relevant tests first. Add regression/behavior tests when behavior changes and practical.
+When the optional `p3c-local` Maven profile is configured and compatible with the project's Java syntax:
 
-Fix compilation, test, security, integrity, compatibility, and static-analysis failures caused by the current change.
-Do not mass-fix unrelated historical violations unless explicitly requested.
+```bash
+bash scripts/verify-java.sh p3c
+```
+
+For a broad/risky change:
+
+```bash
+bash scripts/verify-java.sh all
+```
+
+If the script is unavailable, run the repository's Maven wrapper or Maven directly.
+
+Run narrow relevant tests first when useful. Add regression/behavior tests when behavior changes and practical.
+
+Fix compilation, test, security, integrity, compatibility, and configured local static-analysis failures caused by the current change. Do not mass-fix unrelated historical violations unless explicitly requested.
