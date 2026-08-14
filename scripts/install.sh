@@ -64,8 +64,10 @@ install_tree() {
 install_file "AGENTS.md"
 install_tree ".ai"
 install_tree ".agents"
+install_file "docs/rules/deep-reference.md"
 install_file "config/pmd/p3c.xml"
 install_file "config/pmd/exclude-pmd.properties"
+install_file "examples/maven/p3c-local-profile.xml"
 install_file "scripts/verify-java.sh"
 install_file "scripts/verify-java.ps1"
 install_file "scripts/verify-java.cmd"
@@ -91,7 +93,7 @@ patch_pom() {
       }
       { print }
     ' "$pom" > "$tmp"
-  else
+  elif grep -q '</project>' "$pom"; then
     awk -v fragment="$fragment" '
       /<\/project>/ && !done {
         print "    <profiles>"
@@ -102,6 +104,10 @@ patch_pom() {
       }
       { print }
     ' "$pom" > "$tmp"
+  else
+    rm -f "$tmp"
+    echo "ERROR: cannot patch pom.xml: closing </project> tag not found" >&2
+    exit 2
   fi
 
   mv "$tmp" "$pom"
