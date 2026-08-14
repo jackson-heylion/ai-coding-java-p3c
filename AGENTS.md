@@ -13,6 +13,8 @@ Load domain rules only when triggered:
 | HTTP/RPC/DTO/serialization | `.ai/rules/api.md` |
 | auth/input/secrets/tenant/sensitive data | `.ai/rules/security.md` |
 | behavior/tests | `.ai/rules/testing.md` |
+| `pom.xml`/dependency/plugin/BOM/version | `.ai/rules/maven.md` |
+| Java language/library/numeric/concurrency edge case | `.ai/rules/java.md` |
 | explicit P3C mapping/history ambiguity | `.ai/rules/p3c.md` |
 
 For rare edge cases, search only the relevant heading in `docs/rules/deep-reference.md`.
