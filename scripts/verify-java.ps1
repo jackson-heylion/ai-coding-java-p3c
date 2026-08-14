@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('auto','compile','test','static','verify','all','fast','p3c','full')]
+    [ValidateSet('auto','compile','test','static','audit','verify','all','fast','p3c','full')]
     [string]$Mode = 'auto',
     [string]$ProjectDir = '.'
 )
@@ -120,6 +120,7 @@ function Run-Test {
     else { Invoke-Maven @('test') }
 }
 function Run-Static { Require-PmdProfile; Invoke-Maven @('-Pp3c-local','-DskipTests','pmd:check') }
+function Run-Audit { Require-PmdProfile; Invoke-Maven @('-Pp3c-local','-DskipTests','-Dpmd.failOnViolation=false','pmd:check') }
 function Run-Verify { Invoke-Maven @('verify') }
 function Run-All { Require-PmdProfile; Invoke-Maven @('-Pp3c-local','verify') }
 
@@ -133,6 +134,7 @@ switch ($Mode) {
     'compile' { Set-Scope; Run-Compile }
     'test'    { Set-Scope; Run-Test }
     'static'  { Set-Scope; Run-Static }
+    'audit'   { Set-Scope; Run-Audit }
     'verify'  { Set-Scope; Run-Verify }
     'all'     { Set-Scope; Run-All }
     'auto' {
