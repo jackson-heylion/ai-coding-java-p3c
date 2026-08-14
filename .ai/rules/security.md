@@ -9,6 +9,8 @@ Load only when the change touches auth, permissions, tenant/data scope, untruste
 - Treat all external HTTP/MQ/RPC/file/config input as untrusted; validate expected type/range/format/allowlist.
 - Use safe parameterized APIs for SQL and other interpreters; never feed raw untrusted input to shell/template/expression/dynamic-code execution.
 - Never hard-code or log passwords, keys, tokens, private keys, or production credentials.
+- Return only sensitive data required by the use case; mask/redact sensitive fields when the caller does not need or is not authorized for the full value.
+- Abuse-prone or costly operations (for example verification messages, email/SMS, ordering, payment, exports) must consider rate limits, quotas, replay/duplicate protection, and other appropriate abuse controls.
 - Use established password/crypto/token libraries; validate token integrity and required claims, not merely decodability.
 - Never disable TLS/certificate/hostname verification to make an integration work.
 - For uploads/downloads, bound size/type, prevent path traversal, generate safe paths, and enforce authorization.
@@ -23,3 +25,4 @@ Search `docs/rules/deep-reference.md` only for:
 
 - `Security: authorization and input`
 - `Security: secrets, SSRF, files, deserialization`
+- `Security: masking, abuse controls, regex`
