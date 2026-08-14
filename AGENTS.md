@@ -57,27 +57,45 @@ Do not apply P3C mechanically when an older recommendation conflicts with modern
 - Preserve backward compatibility unless the task explicitly allows breaking changes.
 - Avoid unrelated formatting or cleanup churn.
 
-## Verification
+## Local verification
 
-After modifying Java code, run the narrowest relevant validation first, then the normal project verification when practical.
+Verification is local. Do not depend on GitHub Actions or another CI service to complete a coding task.
 
-Typical Maven commands:
+When `scripts/verify-java.sh` exists, prefer it over inventing new project-wide commands:
 
 ```bash
-mvn -q -DskipTests compile
-mvn -q test
+# Fast feedback during implementation
+bash scripts/verify-java.sh fast
+
+# Normal completion check
+bash scripts/verify-java.sh full
+
+# Optional adapted P3C PMD scan, when p3c-local is configured
+bash scripts/verify-java.sh p3c
+
+# Normal verify + P3C when available
+bash scripts/verify-java.sh all
+```
+
+If the script is not present, use the repository's Maven wrapper or Maven commands directly:
+
+```bash
+./mvnw -q verify
+# or
 mvn -q verify
 ```
 
-If the repository has wrapper scripts or module-specific commands, prefer those.
+Run the narrowest relevant test first when that gives faster feedback. If working in one module, module-specific checks may be run before root-level verification.
 
 For behavior changes, use `.ai/rules/testing.md` to determine the appropriate regression/unit/integration coverage.
+
+The `p3c-local` profile is optional because Alibaba P3C-PMD 2.1.1 uses an older PMD/JDK toolchain. Do not downgrade valid modern Java code merely to satisfy limitations of the legacy parser.
 
 A task is not complete when the current change introduces:
 
 - compilation failures;
 - failing relevant tests;
-- newly introduced static-analysis violations;
+- newly introduced static-analysis violations in configured local tooling;
 - security or authorization regressions;
 - data-integrity/transaction regressions;
 - accidental API compatibility breaks;
