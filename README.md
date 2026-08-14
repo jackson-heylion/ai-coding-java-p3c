@@ -2,19 +2,20 @@
 
 Repository-scoped Java coding standards for AI coding agents, based on the [Alibaba Java Coding Guidelines (P3C)](https://github.com/alibaba/p3c) and adapted for modern Java / Spring Boot projects.
 
-The goal is not to paste the whole P3C handbook into an AI prompt. Instead, this repository separates the standard into three layers:
+The goal is not to paste the whole P3C handbook into an AI prompt. Instead, this repository separates standards into small, task-selectable rule files plus a development workflow and deterministic verification.
 
 ```text
-AI instructions        -> AGENTS.md + .ai/rules/*.md
+AI entry point          -> AGENTS.md
+Task-specific rules     -> .ai/rules/*.md
 AI development flow    -> .agents/skills/java-development/SKILL.md
-Deterministic checking -> config/pmd/p3c.xml + Maven/CI
+Deterministic checking -> config/pmd/p3c.xml + tests + Maven/CI
 ```
 
 ## Why
 
 Large coding handbooks are poor system prompts: they consume context, mix obsolete and current advice, and cannot guarantee that generated code actually complies.
 
-This repository therefore uses P3C as a baseline while giving modern Java and repository conventions higher priority when appropriate.
+This repository therefore uses P3C as a baseline while giving modern Java, domain-specific engineering rules, repository conventions, correctness, security, and compatibility higher priority where appropriate.
 
 ## Structure
 
@@ -25,6 +26,10 @@ This repository therefore uses P3C as a baseline while giving modern Java and re
 │   └── rules/
 │       ├── java.md
 │       ├── spring-boot.md
+│       ├── database.md
+│       ├── api.md
+│       ├── security.md
+│       ├── testing.md
 │       └── p3c.md
 ├── .agents/
 │   └── skills/
@@ -37,17 +42,91 @@ This repository therefore uses P3C as a baseline while giving modern Java and re
     └── AGENTS.example.md
 ```
 
+## Rule model
+
+Two rules are the baseline for Java changes:
+
+- `.ai/rules/java.md`
+- `.ai/rules/p3c.md`
+
+Additional rules are loaded by task type:
+
+| Task touches | Load |
+|---|---|
+| Spring / Spring Boot | `spring-boot.md` |
+| SQL, ORM, schema, transactions | `database.md` |
+| HTTP/RPC contracts, DTOs, serialization | `api.md` |
+| Authentication, authorization, input, secrets | `security.md` |
+| Tests or behavior changes | `testing.md` |
+
+A real feature commonly uses several rule files. For example:
+
+```text
+Authenticated REST endpoint with database access
+
+java.md
+p3c.md
+spring-boot.md
+api.md
+security.md
+database.md
+testing.md
+```
+
+A pure Java calculation may need only:
+
+```text
+java.md
+p3c.md
+testing.md
+```
+
+This selective-loading model keeps rules explicit without forcing every AI coding turn to consume every document.
+
 ## Recommended rule priority
 
 When rules conflict, use this order:
 
-1. Existing repository architecture and explicit project requirements
-2. Project-specific Java / Spring Boot rules
-3. Modern Java platform conventions
-4. P3C baseline rules
-5. General Java conventions
+1. Explicit task requirements
+2. Existing repository architecture and local conventions
+3. Applicable project/domain rules
+4. Modern Java platform conventions
+5. P3C baseline rules
+6. General Java conventions
 
-This is deliberate. Some original P3C recommendations were written for older Java/Spring ecosystems. For example, this template does **not** require every `Service` or `DAO` class to have a matching interface and `Impl` class.
+Security, correctness, data integrity, and explicit API contracts are not style preferences and must not be weakened to satisfy a lower-priority style rule.
+
+Some original P3C recommendations were written for older Java/Spring ecosystems. For example, this template does **not** require every `Service` or `DAO` class to have a matching interface and `Impl` class.
+
+## What each rule covers
+
+### `java.md`
+
+Modern Java baseline: naming, null safety, exceptions, collections, concurrency, resources, logging, immutability, modern language/JDK APIs, and maintainable structure.
+
+### `spring-boot.md`
+
+Spring application conventions: dependency injection, bean boundaries, configuration, controllers, transactions, validation, logging, async behavior, and framework usage.
+
+### `database.md`
+
+Persistence correctness: transactions, idempotency, concurrency, SQL safety, indexes, pagination, schema rollout, precision, time semantics, MyBatis/MyBatis-Plus/JPA concerns, and bounded data operations.
+
+### `api.md`
+
+Contract design: request/response DTOs, validation, HTTP semantics, stable errors, idempotency, pagination, filtering/sorting, serialization, RPC semantics, compatibility, and object-level authorization.
+
+### `security.md`
+
+Secure coding baseline: authentication, authorization, tenant/data scope, input validation, injection, secrets, tokens, cryptography, uploads, SSRF, deserialization, sensitive data, Spring Security, and safe failure behavior.
+
+### `testing.md`
+
+Behavior-oriented testing: regression tests, boundaries, determinism, isolation, test scope, Spring/database/API/security testing, concurrency/idempotency tests, test data, and meaningful coverage.
+
+### `p3c.md`
+
+Adapted Alibaba P3C baseline. It keeps useful mandatory engineering rules while explicitly allowing modern Java/Spring conventions to override outdated architectural prescriptions.
 
 ## Use in an existing project
 
@@ -60,17 +139,17 @@ AGENTS.md
 config/pmd/p3c.xml
 ```
 
-Then adapt `.ai/rules/java.md` and `.ai/rules/spring-boot.md` to the project.
+Then adapt the domain rules to the project's actual architecture and stack.
 
 The important pattern is:
 
 ```text
 AGENTS.md
-    -> tells the agent what it MUST follow
+    -> routes the agent to applicable rules
 .ai/rules/
     -> contains detailed, reviewable coding rules
 .agents/skills/
-    -> defines the implementation/review workflow
+    -> defines implementation/review workflow
 PMD + tests + build
     -> verifies what can be checked deterministically
 ```
@@ -115,15 +194,18 @@ For newer Java projects, use P3C PMD as a verified subset rather than assuming e
 
 `AGENTS.md` is the portable entry point. Tools that support repository instructions can read it directly. Tools with a skill mechanism can additionally use `.agents/skills/java-development/SKILL.md`.
 
-The rule files themselves are tool-neutral and remain versioned with the codebase.
+The rule files themselves are tool-neutral and remain versioned with the codebase. This allows different coding agents to share one engineering standard instead of maintaining separate prompts per tool.
 
 ## Principles
 
 - Rules live in Git, not in personal IDE settings.
+- Load only rules relevant to the current task.
 - AI writes compliant code from the start instead of fixing style afterward.
 - Static analysis validates rules that can be checked mechanically.
+- Tests validate behavior and important invariants.
 - Existing code is not mass-refactored merely to satisfy a new baseline.
 - Modern Java/Spring conventions override obsolete P3C recommendations.
+- Security, integrity, and compatibility override style preferences.
 - Every rule should be short, actionable, and reviewable.
 
 ## Upstream
