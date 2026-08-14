@@ -10,11 +10,22 @@ This is an example of how a real Java/Spring Boot project can consume the rules 
 
 ## Coding standards
 
-All Java code created or modified by an AI agent MUST follow the repository's copied rule files:
+For every Java change, read:
 
 1. `.ai/rules/java.md`
-2. `.ai/rules/spring-boot.md`
-3. `.ai/rules/p3c.md`
+2. `.ai/rules/p3c.md`
+
+Then load rules based on the task:
+
+| Change area | Rule |
+|---|---|
+| Spring / Spring Boot | `.ai/rules/spring-boot.md` |
+| SQL / persistence / schema / transaction | `.ai/rules/database.md` |
+| HTTP / RPC / DTO / API contract | `.ai/rules/api.md` |
+| authentication / authorization / secrets / untrusted input | `.ai/rules/security.md` |
+| tests or behavior changes | `.ai/rules/testing.md` |
+
+Multiple rules may apply to one change. Do not load unrelated domain rules automatically.
 
 For Java implementation/review workflow, follow:
 
@@ -31,19 +42,29 @@ Add project rules here. Examples:
 - Transaction boundaries belong in the application/service layer.
 - Use existing domain enums/constants rather than creating duplicate values.
 - Follow the repository's logging and trace-id conventions.
+- Derive tenant/user identity from authenticated context rather than trusting request fields.
+- Preserve existing API and database compatibility unless the task explicitly allows a breaking change.
 
 ## Priority
 
 When rules conflict:
 
 1. explicit task requirement;
-2. existing project architecture/conventions;
-3. this project's rules;
-4. `.ai/rules/java.md`;
-5. `.ai/rules/spring-boot.md`;
-6. `.ai/rules/p3c.md`.
+2. security, correctness, data integrity, and explicit public contracts;
+3. existing project architecture/conventions;
+4. this project's rules;
+5. applicable `.ai/rules/*.md` domain rules;
+6. `.ai/rules/java.md`;
+7. `.ai/rules/p3c.md`.
 
 P3C is a baseline, not permission to rewrite established project architecture.
+
+## Before implementation
+
+- Inspect nearby implementation and tests.
+- Identify applicable domain rules.
+- Identify transaction, authorization/data-scope, compatibility, concurrency/idempotency, and test constraints relevant to the change.
+- Reuse existing repository patterns.
 
 ## Verification
 
@@ -55,5 +76,7 @@ mvn -q test
 mvn -q verify
 ```
 
-Fix compilation, test, and static-analysis failures caused by the current change.
+Run the narrowest relevant tests first. Add regression/behavior tests when behavior changes and practical.
+
+Fix compilation, test, security, integrity, compatibility, and static-analysis failures caused by the current change.
 Do not mass-fix unrelated historical violations unless explicitly requested.
