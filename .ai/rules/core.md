@@ -25,6 +25,8 @@ Load this file for every Java change. Do not load other rule files unless the ta
 | HTTP/RPC/DTO/serialization | `api.md` |
 | auth/input/secrets/tenant/sensitive data | `security.md` |
 | behavior change/tests | `testing.md` |
+| `pom.xml`/dependency/plugin/BOM/version | `maven.md` |
+| Java language/library/numeric/concurrency edge case | `java.md` |
 | P3C mapping/history or rule ambiguity | `p3c.md` |
 
 For uncommon edge cases, search the relevant heading in `docs/rules/deep-reference.md`; do **not** read that file wholesale unless the task requires broad review.
