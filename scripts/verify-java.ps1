@@ -7,9 +7,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-Location $ProjectDir
 
-if (-not (Test-Path 'pom.xml')) {
-    throw "pom.xml not found in $(Get-Location)"
-}
+if (-not (Test-Path 'pom.xml')) { throw "pom.xml not found in $(Get-Location)" }
 
 if (Test-Path '.\mvnw.cmd') {
     $Mvn = '.\mvnw.cmd'
@@ -19,11 +17,14 @@ if (Test-Path '.\mvnw.cmd') {
     throw 'Maven not found; install Maven or add mvnw.cmd.'
 }
 
+$script:ScopeArgs = @()
+
 function Invoke-Maven([string[]]$Arguments) {
     $base = @('-q')
     if ($env:MAVEN_THREADS) { $base += @('-T', $env:MAVEN_THREADS) }
-    Write-Host "+ $Mvn $($base + $script:ScopeArgs + $Arguments -join ' ')"
-    & $Mvn @base @script:ScopeArgs @Arguments
+    $allArgs = $base + $script:ScopeArgs + $Arguments
+    Write-Host "+ $Mvn $($allArgs -join ' ')"
+    & $Mvn @allArgs
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 
@@ -32,23 +33,24 @@ function Has-PmdProfile {
 }
 
 function Require-PmdProfile {
-    if (-not (Has-PmdProfile)) {
-        throw "Missing Maven profile 'p3c-local' (see examples/maven/p3c-local-profile.xml)."
-    }
+    if (-not (Has-PmdProfile)) { throw "Missing Maven profile 'p3c-local' (see examples/maven/p3c-local-profile.xml)." }
 }
 
-$script:ScopeArgs = @()
 function Set-Scope([string]$Modules = $env:MODULES) {
     $script:ScopeArgs = @()
     if ($Modules) { $script:ScopeArgs = @('-pl', $Modules, '-am') }
 }
 
+function Test-GitWorktree {
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) { return $false }
+    & git rev-parse --is-inside-work-tree *> $null
+    return ($LASTEXITCODE -eq 0)
+}
+
 function Get-ChangedFiles {
     $files = @()
-    if (Get-Command git -ErrorAction SilentlyContinue) {
-        $files += git diff --name-only --diff-filter=ACMRD HEAD -- 2>$null
-        $files += git ls-files --others --exclude-standard 2>$null
-    }
+    $files += git diff --name-only --diff-filter=ACMRD HEAD -- 2>$null
+    $files += git ls-files --others --exclude-standard 2>$null
     return $files | Where-Object { $_ } | Sort-Object -Unique
 }
 
@@ -72,6 +74,12 @@ function Find-Module([string]$File) {
 }
 
 function Set-AutoScope {
+    if (-not (Test-GitWorktree)) {
+        Write-Host 'INFO: Git working tree unavailable; using full Maven reactor.'
+        Set-Scope ''
+        return $true
+    }
+
     $files = @(Get-ChangedFiles)
     if ($files.Count -eq 0) {
         Write-Host 'INFO: no working-tree changes; nothing to validate.'
@@ -84,7 +92,7 @@ function Set-AutoScope {
 
     $modules = @()
     foreach ($file in $files) {
-        if ($file -match '^(pom\.xml|\.mvn/|mvnw|mvnw\.cmd|config/pmd/|scripts/verify-java\.(sh|ps1))') {
+        if ($file -match '^(pom\.xml|\.mvn/|mvnw|mvnw\.cmd|config/pmd/|scripts/verify-java\.(sh|ps1|cmd))') {
             Set-Scope ''
             return $true
         }
@@ -108,20 +116,17 @@ function Set-AutoScope {
 
 function Run-Compile { Invoke-Maven @('-DskipTests','compile') }
 function Run-Test {
-    if ($env:TEST) {
-        Invoke-Maven @("-Dtest=$($env:TEST)",'-Dsurefire.failIfNoSpecifiedTests=false','test')
-    } else {
-        Invoke-Maven @('test')
-    }
+    if ($env:TEST) { Invoke-Maven @("-Dtest=$($env:TEST)",'-Dsurefire.failIfNoSpecifiedTests=false','test') }
+    else { Invoke-Maven @('test') }
 }
 function Run-Static { Require-PmdProfile; Invoke-Maven @('-Pp3c-local','-DskipTests','pmd:check') }
 function Run-Verify { Invoke-Maven @('verify') }
 function Run-All { Require-PmdProfile; Invoke-Maven @('-Pp3c-local','verify') }
 
 switch ($Mode) {
-    'fast'   { $Mode = 'test' }
-    'p3c'    { $Mode = 'static' }
-    'full'   { $Mode = 'verify' }
+    'fast' { $Mode = 'test' }
+    'p3c'  { $Mode = 'static' }
+    'full' { $Mode = 'verify' }
 }
 
 switch ($Mode) {
