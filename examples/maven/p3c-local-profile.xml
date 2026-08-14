@@ -1,20 +1,14 @@
 <!--
-Copy this <profile> into your project's <profiles> section.
+Copy this <profile> into the project's <profiles> section.
 
-This profile intentionally DOES NOT use com.alibaba.p3c:p3c-pmd.
-P3C is the guideline source; PMD 7 provides the maintained Java parser and rules.
+P3C provides rule intent; PMD 7 provides the maintained Java 17/21 parser.
+No Alibaba p3c-pmd / PMD 6 runtime is used.
 
-Local run:
-  mvn -Pp3c-local -DskipTests verify
+Fast static-only run:
+  mvn -Pp3c-local -DskipTests pmd:check
 
-Or, after copying scripts/verify-java.sh into the project:
-  bash scripts/verify-java.sh p3c
-
-Recommended runtime:
-- Java project target: 17 or 21
-- Run Maven with the matching JDK/toolchain where practical
-- Maven PMD Plugin: 3.28.0
-- PMD runtime: 7.26.0
+Single-pass full local validation:
+  mvn -Pp3c-local verify
 -->
 <profile>
     <id>p3c-local</id>
@@ -32,15 +26,23 @@ Recommended runtime:
 
                 <configuration>
                     <inputEncoding>${project.build.sourceEncoding}</inputEncoding>
-                    <printFailingErrors>true</printFailingErrors>
-                    <verbose>true</verbose>
-                    <failOnViolation>true</failOnViolation>
-                    <failurePriority>5</failurePriority>
-                    <skipPmdError>false</skipPmdError>
-                    <typeResolution>true</typeResolution>
                     <rulesets>
                         <ruleset>${maven.multiModuleProjectDirectory}/config/pmd/p3c.xml</ruleset>
                     </rulesets>
+
+                    <!-- Local-speed defaults -->
+                    <analysisCache>true</analysisCache>
+                    <analysisCacheLocation>${project.build.directory}/pmd/pmd.cache</analysisCacheLocation>
+                    <includeTests>false</includeTests>
+                    <linkXRef>false</linkXRef>
+                    <verbose>false</verbose>
+
+                    <!-- Correctness -->
+                    <typeResolution>true</typeResolution>
+                    <failOnViolation>true</failOnViolation>
+                    <failurePriority>5</failurePriority>
+                    <printFailingErrors>true</printFailingErrors>
+                    <skipPmdError>false</skipPmdError>
                 </configuration>
 
                 <executions>
@@ -53,10 +55,7 @@ Recommended runtime:
                     </execution>
                 </executions>
 
-                <!--
-                  maven-pmd-plugin 3.28.0 ships PMD 7.17.0 by default.
-                  Override all PMD runtime modules together so the parser/rules stay aligned.
-                -->
+                <!-- Keep PMD runtime modules aligned when overriding the plugin default. -->
                 <dependencies>
                     <dependency>
                         <groupId>net.sourceforge.pmd</groupId>
