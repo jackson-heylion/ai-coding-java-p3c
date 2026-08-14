@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="AI Coding Java P3C"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>
+        Alibaba P3C PMD baseline for AI-assisted Java development.
+
+        The upstream P3C PMD implementation was built against an older PMD/JDK toolchain.
+        Validate compatibility with the JDK syntax used by the consuming project before
+        turning this into a required CI gate.
+
+        Repository architecture and modern Java/Spring rules take priority over obsolete
+        architectural conventions. In particular, ServiceOrDaoClassShouldEndWithImplRule
+        is intentionally excluded: a project should not create interface/Impl pairs only
+        to satisfy a historical naming convention.
+    </description>
+
+    <rule ref="rulesets/java/ali-comment.xml"/>
+    <rule ref="rulesets/java/ali-concurrent.xml"/>
+    <rule ref="rulesets/java/ali-constant.xml"/>
+    <rule ref="rulesets/java/ali-exception.xml"/>
+    <rule ref="rulesets/java/ali-flowcontrol.xml"/>
+
+    <rule ref="rulesets/java/ali-naming.xml">
+        <exclude name="ServiceOrDaoClassShouldEndWithImplRule"/>
+    </rule>
+
+    <rule ref="rulesets/java/ali-oop.xml"/>
+    <rule ref="rulesets/java/ali-orm.xml"/>
+    <rule ref="rulesets/java/ali-other.xml"/>
+    <rule ref="rulesets/java/ali-set.xml"/>
+
+</ruleset>
