@@ -1,153 +1,210 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${1:-full}"
+MODE="${1:-auto}"
 PROJECT_DIR="${2:-.}"
-
 cd "$PROJECT_DIR"
 
-if [[ ! -f pom.xml ]]; then
-  echo "ERROR: pom.xml not found in: $(pwd)" >&2
-  exit 2
-fi
+[[ -f pom.xml ]] || { echo "ERROR: pom.xml not found in $(pwd)" >&2; exit 2; }
 
 if [[ -x ./mvnw ]]; then
   MVN=(./mvnw)
 elif command -v mvn >/dev/null 2>&1; then
   MVN=(mvn)
 else
-  echo "ERROR: Maven was not found. Install Maven or add ./mvnw to the project." >&2
+  echo "ERROR: Maven not found; install Maven or add ./mvnw." >&2
   exit 2
 fi
 
-run() {
-  echo "+ $*"
-  "$@"
-}
+BASE_ARGS=(-q)
+[[ -n "${MAVEN_THREADS:-}" ]] && BASE_ARGS+=(-T "$MAVEN_THREADS")
 
-has_p3c_profile() {
+run() { echo "+ $*"; "$@"; }
+
+has_pmd_profile() {
   grep -Eq '<id>[[:space:]]*p3c-local[[:space:]]*</id>' pom.xml
 }
 
-require_p3c_profile() {
-  if has_p3c_profile; then
-    return
-  fi
-
-  cat >&2 <<'EOF'
-ERROR: Maven profile 'p3c-local' was not found in pom.xml.
-
-Copy the profile from:
-  examples/maven/p3c-local-profile.xml
-
-into your project's <profiles> section.
-EOF
-  exit 3
+require_pmd_profile() {
+  has_pmd_profile || {
+    echo "ERROR: missing Maven profile 'p3c-local' (see examples/maven/p3c-local-profile.xml)." >&2
+    exit 3
+  }
 }
 
-maven_property() {
-  local expression="$1"
-  local value
-
-  value="$("${MVN[@]}" -q help:evaluate \
-    -Dexpression="$expression" \
-    -DforceStdout 2>/dev/null || true)"
-
-  printf '%s' "$value" | tr -d '\r' | tail -n 1
+scope_args=()
+set_scope() {
+  local modules="${1:-${MODULES:-}}"
+  scope_args=()
+  [[ -n "$modules" ]] && scope_args=(-pl "$modules" -am)
 }
 
-normalize_java_level() {
-  local value="$1"
-
-  case "$value" in
-    17|1.17)
-      printf '17'
-      ;;
-    21|1.21)
-      printf '21'
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+changed_files() {
+  {
+    git diff --name-only --diff-filter=ACMR HEAD -- 2>/dev/null || true
+    git ls-files --others --exclude-standard 2>/dev/null || true
+  } | sed '/^$/d' | sort -u
 }
 
-detect_java_level() {
-  local property value normalized
+is_context_only() {
+  local file
+  while IFS= read -r file; do
+    case "$file" in
+      *.md|README*|LICENSE*|docs/*|.ai/*|.agents/*) ;;
+      *) return 1 ;;
+    esac
+  done
+  return 0
+}
 
-  for property in maven.compiler.release maven.compiler.source maven.compiler.target; do
-    value="$(maven_property "$property")"
-    if normalized="$(normalize_java_level "$value" 2>/dev/null)"; then
-      printf '%s' "$normalized"
+nearest_module() {
+  local path="$1" dir
+  dir="$(dirname "$path")"
+  while [[ "$dir" != "." && "$dir" != "/" ]]; do
+    if [[ -f "$dir/pom.xml" ]]; then
+      printf '%s' "$dir"
       return 0
     fi
+    dir="$(dirname "$dir")"
   done
-
-  return 1
+  [[ -f pom.xml ]] && printf '.'
 }
 
-run_p3c() {
-  local java_level
-  local pmd_args=(-q -Pp3c-local -DskipTests -Dpmd.skipPmdError=false)
+auto_scope() {
+  local files file module
+  local modules=()
+  files="$(changed_files)"
 
-  require_p3c_profile
-
-  if java_level="$(detect_java_level)"; then
-    echo "INFO: PMD target Java level detected from Maven: $java_level"
-    pmd_args+=("-DtargetJdk=$java_level")
-  else
-    echo "INFO: Could not resolve Maven compiler level as Java 17/21; PMD 7 will use its modern default language level."
-    echo "INFO: Maven compilation remains authoritative for the project's configured Java release."
+  if [[ -z "$files" ]]; then
+    echo "INFO: no working-tree changes; nothing to validate."
+    return 10
   fi
 
-  run "${MVN[@]}" "${pmd_args[@]}" verify
+  if printf '%s\n' "$files" | is_context_only; then
+    echo "INFO: only documentation/AI-rule files changed; Java build skipped."
+    return 10
+  fi
+
+  while IFS= read -r file; do
+    case "$file" in
+      pom.xml|.mvn/*|mvnw|mvnw.cmd|config/pmd/*|scripts/verify-java.sh)
+        set_scope ""
+        return 0
+        ;;
+    esac
+
+    module="$(nearest_module "$file")"
+    if [[ -z "$module" || "$module" == "." ]]; then
+      set_scope ""
+      return 0
+    fi
+    modules+=("$module")
+  done <<< "$files"
+
+  if ((${#modules[@]})); then
+    local csv
+    csv="$(printf '%s\n' "${modules[@]}" | sort -u | paste -sd, -)"
+    echo "INFO: changed Maven modules: $csv"
+    set_scope "$csv"
+  else
+    set_scope ""
+  fi
+}
+
+mvn_run() {
+  run "${MVN[@]}" "${BASE_ARGS[@]}" "${scope_args[@]}" "$@"
+}
+
+run_compile() {
+  mvn_run -DskipTests compile
+}
+
+run_test() {
+  local args=(test)
+  if [[ -n "${TEST:-}" ]]; then
+    args=(-Dtest="$TEST" -Dsurefire.failIfNoSpecifiedTests=false test)
+  fi
+  mvn_run "${args[@]}"
+}
+
+run_static() {
+  require_pmd_profile
+  # Direct goal: no compile/test/verify lifecycle. PMD cache handles unchanged files.
+  mvn_run -Pp3c-local -DskipTests pmd:check
+}
+
+run_verify() {
+  mvn_run verify
+}
+
+run_all() {
+  require_pmd_profile
+  # One lifecycle only: tests + normal verify plugins + PMD bound to verify.
+  mvn_run -Pp3c-local verify
 }
 
 case "$MODE" in
-  fast)
-    run "${MVN[@]}" -q -DskipTests compile
-    run "${MVN[@]}" -q test
+  compile)
+    set_scope
+    run_compile
     ;;
-
-  full)
-    run "${MVN[@]}" -q verify
+  test|fast)
+    set_scope
+    run_test
     ;;
-
-  p3c)
-    run_p3c
+  static|p3c)
+    set_scope
+    run_static
     ;;
-
+  verify|full)
+    set_scope
+    run_verify
+    ;;
   all)
-    run "${MVN[@]}" -q verify
-    run_p3c
+    set_scope
+    run_all
     ;;
-
+  auto)
+    if auto_scope; then
+      if has_pmd_profile; then
+        run_all
+      else
+        echo "INFO: p3c-local not configured; running scoped Maven verify only."
+        run_verify
+      fi
+    else
+      status=$?
+      [[ "$status" -eq 10 ]] || exit "$status"
+    fi
+    ;;
   help|-h|--help)
     cat <<'EOF'
-Local Java verification
+Fast local Java verification
 
 Usage:
-  bash scripts/verify-java.sh [mode] [project-directory]
+  bash scripts/verify-java.sh [auto|compile|test|static|verify|all] [project-dir]
 
 Modes:
-  fast   compile + tests
-  full   normal Maven verify (default)
-  p3c    PMD 7 / P3C-aligned static analysis
-  all    normal verify + required PMD 7 static analysis
+  auto     inspect git changes; skip docs-only; scope modules; run one final verify (+ PMD if configured)
+  compile  compile only
+  test     test once (already includes compilation); TEST=FooTest narrows tests
+  static   direct PMD check only; no Maven lifecycle/tests
+  verify   normal Maven verify
+  all      one Maven verify with p3c-local enabled (tests + verify + PMD once)
 
-The PMD command automatically detects Java 17/21 from:
-  maven.compiler.release
-  maven.compiler.source
-  maven.compiler.target
+Compatibility aliases: fast=test, p3c=static, full=verify
+
+Optional scope/performance variables:
+  MODULES=module-a,module-b   use Maven -pl ... -am
+  TEST=OrderServiceTest      run focused Surefire test(s)
+  MAVEN_THREADS=1C           opt into Maven parallel reactor execution
 
 Examples:
-  bash scripts/verify-java.sh fast
-  bash scripts/verify-java.sh full
-  bash scripts/verify-java.sh p3c
-  bash scripts/verify-java.sh all /path/to/project
+  TEST=OrderServiceTest bash scripts/verify-java.sh test
+  MODULES=order-server bash scripts/verify-java.sh static
+  bash scripts/verify-java.sh auto
 EOF
     ;;
-
   *)
     echo "ERROR: unknown mode '$MODE'. Use --help." >&2
     exit 2
