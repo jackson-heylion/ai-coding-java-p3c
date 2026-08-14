@@ -1,171 +1,88 @@
 # Local Verification
 
-This repository intentionally keeps verification local. No GitHub Actions or other CI configuration is required.
+Local only; no CI is required. The goal is **minimum sufficient feedback**, not running every check after every edit.
 
-## Modern parser baseline
+## Cost model
 
-The executable static-analysis path uses **PMD 7.26.0** only.
+| Need | Command | What it avoids |
+|---|---|---|
+| syntax/compile only | `verify-java.sh compile` | tests + PMD + verify plugins |
+| behavior feedback | `verify-java.sh test` | separate compile + verify + PMD |
+| static feedback | `verify-java.sh static` | compile/test/verify lifecycle |
+| normal final check | `verify-java.sh auto` | unrelated modules/docs-only builds |
+| explicit full check | `verify-java.sh all` | duplicate `verify` + PMD lifecycle |
 
-It does **not** use `com.alibaba.p3c:p3c-pmd`, PMD 6, or Alibaba's historical PMD parser integration.
+`mvn test` already runs compilation; never run compile immediately before test just for completeness.
 
-P3C is retained as the engineering guideline source; deterministic checks are implemented with maintained PMD 7 Java rules.
-
-PMD 7 natively supports Java 17 and Java 21 standard syntax. This includes Java 21 features such as record patterns and pattern matching for `switch`.
-
-The Maven compiler remains the authority for the project's configured source/release level, while PMD performs semantic/static analysis on the compiled project's source and classpath.
-
-## Recommended project layout
-
-Copy these files into a Maven project when adopting the template:
-
-```text
-AGENTS.md
-.ai/
-.agents/
-config/pmd/p3c.xml
-scripts/verify-java.sh
-```
-
-Also copy the Maven profile from:
-
-```text
-examples/maven/p3c-local-profile.xml
-```
-
-into the project's `<profiles>` section in `pom.xml`.
-
-## Tool versions
-
-The local profile pins:
-
-```text
-maven-pmd-plugin 3.28.0
-PMD runtime       7.26.0
-```
-
-The profile overrides the PMD runtime modules shipped by the Maven plugin so all PMD modules use the same 7.26.0 version.
-
-## Commands
-
-The script uses `./mvnw` when present and falls back to `mvn`.
-
-### Fast feedback
+## Focused execution
 
 ```bash
-bash scripts/verify-java.sh fast
+TEST=OrderServiceTest bash scripts/verify-java.sh test
+MODULES=order-server bash scripts/verify-java.sh test
+MODULES=order-server bash scripts/verify-java.sh static
+MAVEN_THREADS=1C bash scripts/verify-java.sh all
 ```
 
-Runs:
+- `TEST` narrows Surefire tests.
+- `MODULES` uses Maven `-pl ... -am` for known reactor scope.
+- `MAVEN_THREADS` is opt-in because not every project/plugin is safe or faster under parallel Maven execution.
 
-```text
-compile -> tests
-```
+## `auto` mode
 
-Use this during implementation.
+`auto` inspects working-tree changes:
 
-### Normal project verification
+- docs/Markdown/AI-rule-only change → no Java build;
+- module-local change → `-pl changed-modules -am`;
+- root `pom.xml`, Maven wrapper/config, PMD config, root/unmapped change → full reactor.
+
+It then runs **one** scoped `verify`; when `p3c-local` exists it activates the profile so tests, normal verify plugins, and PMD all execute in that same lifecycle.
+
+## Static analysis
 
 ```bash
-bash scripts/verify-java.sh full
+bash scripts/verify-java.sh static
 ```
 
-Runs the project's normal Maven `verify` lifecycle.
+Runs direct `pmd:check`, not Maven `verify`. The Maven PMD Plugin's check goal triggers PMD analysis itself, so compile/tests/lifecycle phases are unnecessary for static-only feedback.
 
-### Modern P3C-aligned static analysis
-
-```bash
-bash scripts/verify-java.sh p3c
-```
-
-Requires the `p3c-local` Maven profile and runs:
+The `p3c-local` profile enables PMD incremental analysis:
 
 ```text
-PMD 7.26.0
-  -> config/pmd/p3c.xml
-  -> PMD maintained Java rules
+analysisCache=true
+target/pmd/pmd.cache
 ```
 
-Parser/static-analysis errors are not silently ignored: the profile sets `skipPmdError=false` and fails on violations.
+After the first scan, unchanged files reuse cached analysis/results. Do not run `mvn clean` routinely before local PMD checks because deleting `target` also deletes the cache.
 
-### Full local check
+Other local-speed defaults:
+
+- test sources excluded from PMD by default;
+- XRef linking disabled;
+- verbose success output disabled;
+- type resolution remains enabled for rule quality;
+- PMD errors/violations still fail the check.
+
+## Final-validation policy
+
+Use `auto` for normal feature/fix completion. Escalate to `all` only when scope cannot be narrowed safely, such as:
+
+- root/build/plugin/toolchain changes;
+- cross-module architecture changes;
+- shared public-contract changes with broad consumers;
+- large refactors or risky transaction/security changes;
+- explicit release-style validation.
+
+Do not repeatedly run `test → verify → static → all` unless each step answers a new question.
+
+## Java / parser baseline
+
+Static analysis uses PMD 7 only and supports standard Java 17/21 syntax. Never introduce Alibaba `p3c-pmd`, PMD 6, or source downgrades for parser compatibility.
+
+Compatibility smoke tests remain available through:
 
 ```bash
-bash scripts/verify-java.sh all
+bash scripts/verify-java-compatibility.sh 17
+bash scripts/verify-java-compatibility.sh 21
 ```
 
-Runs normal Maven verification first, then the PMD 7 P3C-aligned scan when the profile exists.
-
-## Java 17 and Java 21
-
-The same PMD 7 ruleset is used for both Java 17 and Java 21 projects.
-
-Recommended practice:
-
-- compile Java 17 projects with a Java 17 toolchain/runtime when practical;
-- compile Java 21 projects with a Java 21 toolchain/runtime;
-- keep Maven compiler/toolchain settings as the source of truth for the project language level;
-- keep PMD type resolution enabled so rules can use the project classpath.
-
-For projects that build under a different launcher JDK, configure Maven Toolchains so compiler and analysis use the intended JDK consistently.
-
-## Java 21 syntax intentionally supported
-
-The local analyzer must accept standard Java 21 syntax, including:
-
-- records;
-- sealed classes/interfaces;
-- text blocks;
-- switch expressions;
-- pattern matching for `instanceof`;
-- record patterns;
-- pattern matching for `switch`;
-- modern lambda/method-reference syntax;
-- virtual-thread APIs at the source/type-analysis level.
-
-Do not rewrite modern Java code into Java 8-era syntax for static-analysis compatibility.
-
-## Preview features
-
-This repository targets **standard Java 17/21 syntax** by default.
-
-Preview features are a separate policy decision because preview syntax changes between JDK releases. If a consuming project enables preview features, configure the compiler and PMD language version explicitly for that project's JDK rather than weakening the standard baseline.
-
-## AI agent behavior
-
-For Java changes, an AI coding agent should prefer repository-provided local verification commands.
-
-Recommended order:
-
-```text
-small change
-  -> narrow relevant test if known
-  -> bash scripts/verify-java.sh fast
-
-before finishing
-  -> bash scripts/verify-java.sh full
-
-static-analysis validation
-  -> bash scripts/verify-java.sh p3c
-
-larger/riskier change
-  -> bash scripts/verify-java.sh all
-```
-
-A PMD parser error is a tooling failure that must be investigated; it must not be treated as permission to skip static analysis silently.
-
-## Multi-module Maven projects
-
-Run from the repository root when possible so `${maven.multiModuleProjectDirectory}` resolves the shared ruleset correctly.
-
-For narrow feedback, module-specific Maven commands may be run first, followed by root-level verification before finishing.
-
-## Scope of fixes
-
-Local verification should gate the current change, not trigger mass cleanup.
-
-Fix:
-
-- failures introduced by the current change;
-- relevant existing failures that block validation of the changed code when the fix is small and safe.
-
-Do not automatically refactor unrelated historical violations.
+These are tooling-maintenance checks, not something an AI agent should run for ordinary application edits.
