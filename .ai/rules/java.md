@@ -4,9 +4,30 @@ These rules apply whenever Java code is created, modified, reviewed, or refactor
 
 ## Language baseline
 
-- Prefer the Java version configured by the repository.
-- Prefer modern JDK APIs over legacy alternatives when compatibility allows.
-- Do not lower the language level or add compatibility workarounds unless required by the project.
+Java 17 and Java 21 are first-class targets.
+
+### MUST
+
+- Use the Java version configured by the repository.
+- Do not lower the language level or rewrite valid Java 17/21 syntax for static-analysis compatibility.
+- Prefer maintained modern JDK APIs over legacy alternatives when compatibility allows.
+- Keep Maven compiler/toolchain configuration authoritative for the project's source/release level.
+
+### Modern syntax
+
+Use modern language constructs when they improve clarity, safety, or data modeling and the repository target supports them, including:
+
+- records;
+- sealed classes/interfaces;
+- text blocks;
+- switch expressions;
+- pattern matching for `instanceof`;
+- Java 21 record patterns;
+- Java 21 pattern matching for `switch`;
+- lambdas and method references;
+- Java 21 virtual-thread APIs when they fit the system's concurrency/backpressure design.
+
+Do not replace these constructs with Java 8-era boilerplate merely because an older guideline predates them.
 
 ## Naming
 
@@ -90,6 +111,8 @@ Keep conditions readable. Extract domain predicates or meaningful boolean variab
 
 Prefer guard clauses when they reduce nesting without obscuring business flow.
 
+Modern switch expressions and pattern matching are valid control-flow tools; do not force old-style `switch`/`break` forms when the modern form is clearer.
+
 ## Exceptions
 
 ### MUST
@@ -147,9 +170,18 @@ Make timezone assumptions explicit at system boundaries.
 
 - Do not create unbounded thread pools or queues unintentionally.
 - Thread pools must have understandable sizing, queueing, rejection, and naming policies.
-- Do not create raw threads in application code when the framework/executor model should own them.
+- Do not create raw platform threads in application code when the framework/executor model should own them.
 - Clean up `ThreadLocal` values in pooled-thread execution paths, preferably with `try/finally`.
 - Avoid holding locks while performing network or slow blocking I/O unless required by correctness.
+
+### Java 21 virtual threads
+
+Virtual threads are allowed when the project targets Java 21 and they fit the architecture.
+
+- Do not apply classic platform-thread pool sizing rules mechanically to virtual threads.
+- Still bound scarce downstream resources such as database connections, remote-service concurrency, file descriptors, or rate-limited APIs.
+- Avoid designs that rely on unbounded task creation merely because virtual threads are cheap.
+- Preserve cancellation, timeout, observability, and request-context semantics.
 
 ### SHOULD
 
@@ -208,6 +240,15 @@ Comments should explain constraints, invariants, trade-offs, or reasons that are
 
 Do not add comments that merely translate the next line of code into prose.
 
+## Static-analysis compatibility
+
+### MUST
+
+- Use PMD 7 for repository-provided Java static analysis.
+- Do not add `com.alibaba.p3c:p3c-pmd`, PMD 6, or a legacy parser fallback.
+- Treat parser errors on valid Java 17/21 code as tooling defects/configuration issues.
+- Never downgrade source syntax solely to appease obsolete analysis tooling.
+
 ## Generated changes
 
 ### MUST
@@ -218,4 +259,5 @@ AI-generated changes must:
 - avoid unrelated refactoring;
 - avoid speculative abstractions;
 - compile under the repository's configured JDK;
-- include or update tests when behavior changes and the repository has a relevant testing pattern.
+- include or update tests when behavior changes and the repository has a relevant testing pattern;
+- pass configured PMD 7 local analysis before completion when the local profile is installed.
