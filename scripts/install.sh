@@ -61,6 +61,7 @@ install_tree() {
   done < <(find "$ROOT/$rel" -type f | sort)
 }
 
+install_file ".gitattributes"
 install_file "AGENTS.md"
 install_tree ".ai"
 install_tree ".agents"
