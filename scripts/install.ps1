@@ -43,6 +43,7 @@ Install-File 'AGENTS.md'
 Install-Tree '.ai'
 Install-Tree '.agents'
 Install-File 'config/pmd/p3c.xml'
+Install-File 'config/pmd/exclude-pmd.properties'
 Install-File 'scripts/verify-java.sh'
 Install-File 'scripts/verify-java.ps1'
 Install-File 'scripts/verify-java.cmd'
@@ -61,10 +62,12 @@ function Add-PmdProfile {
     $fragment = Get-Content (Join-Path $Root 'examples/maven/p3c-local-profile.xml') -Raw
 
     if ($content -match '</profiles>') {
-        $content = [regex]::Replace($content, '</profiles>', "$fragment`r`n</profiles>", 1)
+        $rx = [regex]'</profiles>'
+        $content = $rx.Replace($content, "$fragment`r`n</profiles>", 1)
     } elseif ($content -match '</project>') {
+        $rx = [regex]'</project>'
         $block = "    <profiles>`r`n$fragment`r`n    </profiles>`r`n</project>"
-        $content = [regex]::Replace($content, '</project>', $block, 1)
+        $content = $rx.Replace($content, $block, 1)
     } else {
         throw 'Cannot patch pom.xml: closing </project> tag not found.'
     }
@@ -77,12 +80,24 @@ if ($PatchPom) { Add-PmdProfile }
 
 Write-Host "`nInstalled into: $Target"
 Write-Host "Mode: $Mode"
-Write-Host "`nNext:"
-Write-Host '  Windows:     scripts\verify-java.cmd auto'
-Write-Host '  PowerShell:  powershell -File scripts\verify-java.ps1 auto'
-Write-Host '  macOS/Linux: bash scripts/verify-java.sh auto'
 
 $pomPath = Join-Path $Target 'pom.xml'
-if ((Test-Path $pomPath) -and -not (Select-String -Path $pomPath -Pattern '<id>\s*p3c-local\s*</id>' -Quiet)) {
+$hasProfile = (Test-Path $pomPath) -and (Select-String -Path $pomPath -Pattern '<id>\s*p3c-local\s*</id>' -Quiet)
+
+if ($hasProfile -and $Mode -eq 'existing') {
+    Write-Host "`nRecommended first run for an existing project:"
+    Write-Host '  Windows CMD: scripts\verify-java.cmd audit'
+    Write-Host '  PowerShell:  powershell -File scripts\verify-java.ps1 audit'
+    Write-Host "`nThen use auto for normal AI coding:"
+    Write-Host '  Windows CMD: scripts\verify-java.cmd auto'
+    Write-Host '  PowerShell:  powershell -File scripts\verify-java.ps1 auto'
+} else {
+    Write-Host "`nNext:"
+    Write-Host '  Windows CMD: scripts\verify-java.cmd auto'
+    Write-Host '  PowerShell:  powershell -File scripts\verify-java.ps1 auto'
+    Write-Host '  macOS/Linux: bash scripts/verify-java.sh auto'
+}
+
+if ((Test-Path $pomPath) -and -not $hasProfile) {
     Write-Host "`nStatic analysis is not enabled yet. Rerun with -PatchPom or merge examples/maven/p3c-local-profile.xml manually."
 }
