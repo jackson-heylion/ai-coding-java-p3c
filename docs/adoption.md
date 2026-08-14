@@ -5,17 +5,20 @@ Use the installer that matches the operating system. Rules are platform-neutral;
 ## Installed files
 
 ```text
+.gitattributes
 AGENTS.md
 .ai/
 .agents/
+docs/rules/deep-reference.md
 config/pmd/p3c.xml
 config/pmd/exclude-pmd.properties
+examples/maven/p3c-local-profile.xml
 scripts/verify-java.sh
 scripts/verify-java.ps1
 scripts/verify-java.cmd
 ```
 
-Existing files are preserved by default. Use `--force` / `-Force` only when replacement is intentional.
+Existing files are preserved by default. Use `--force` / `-Force` only when replacement is intentional. If an existing `.gitattributes` is skipped, merge the script EOL rules manually: `.sh` uses LF; `.ps1`/`.cmd` use CRLF.
 
 ## New project
 
@@ -142,7 +145,7 @@ Project-specific rules should normally be merged, not overwritten.
 ## Recommended migration order for an old project
 
 1. Install without force.
-2. Merge an existing `AGENTS.md` deliberately.
+2. Merge existing `AGENTS.md` / `.gitattributes` deliberately if present.
 3. Review `.ai/rules/core.md`; add only real project-specific constraints.
 4. Enable `p3c-local`.
 5. Run `audit` once to inventory historical PMD findings.
