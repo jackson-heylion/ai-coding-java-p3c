@@ -9,7 +9,7 @@
 
         The upstream P3C PMD implementation was built against an older PMD/JDK toolchain.
         Validate compatibility with the JDK syntax used by the consuming project before
-        turning this into a required CI gate.
+        treating this as a mandatory local check.
 
         Repository architecture and modern Java/Spring rules take priority over obsolete
         architectural conventions. In particular, ServiceOrDaoClassShouldEndWithImplRule
