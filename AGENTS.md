@@ -1,126 +1,56 @@
 # Repository AI Instructions
 
-These instructions apply to all AI coding work in this repository and to projects that copy this template.
+## 1. Load minimally
 
-## Rule sources
+For Java work, read only:
 
-For Java work, always read and follow:
+- `.ai/rules/core.md`
+- `.agents/skills/java-development/SKILL.md` when implementation/review workflow is needed
 
-1. `.ai/rules/java.md`
-2. `.ai/rules/p3c.md`
+Then load domain rules only when the change touches that area:
 
-Load additional rules only when the task touches that area:
-
-| Area | Rule file |
+| Trigger | Rule |
 |---|---|
-| Spring / Spring Boot | `.ai/rules/spring-boot.md` |
-| SQL, ORM, persistence, schema, transactions | `.ai/rules/database.md` |
-| HTTP/RPC contracts, DTOs, serialization | `.ai/rules/api.md` |
-| Auth, permissions, input, secrets, sensitive data | `.ai/rules/security.md` |
-| Tests or behavior changes requiring tests | `.ai/rules/testing.md` |
+| Spring/Spring Boot | `.ai/rules/spring-boot.md` |
+| SQL/persistence/schema/transaction | `.ai/rules/database.md` |
+| HTTP/RPC/DTO/serialization | `.ai/rules/api.md` |
+| auth/input/secrets/tenant/sensitive data | `.ai/rules/security.md` |
+| behavior/tests | `.ai/rules/testing.md` |
+| explicit P3C mapping/history ambiguity | `.ai/rules/p3c.md` |
 
-A change may require several domain rules. For example, a new authenticated REST endpoint backed by a database typically requires `spring-boot.md`, `api.md`, `security.md`, `database.md`, and `testing.md` in addition to the Java/P3C baseline.
+Do not preload every rule. For rare edge cases, search only the relevant heading in `docs/rules/deep-reference.md`.
 
-For implementation and review workflow, follow:
+## 2. Priority
 
-- `.agents/skills/java-development/SKILL.md`
+1. Explicit task requirement
+2. Security/correctness/data integrity/public contract
+3. Existing repository architecture/conventions
+4. Applicable domain rule
+5. Core Java/P3C baseline
 
-## Java platform baseline
+Java 17/21 standard syntax is first-class. Static analysis uses PMD 7 only; never downgrade source syntax or introduce legacy `p3c-pmd`/PMD 6.
 
-This template treats Java 17 and Java 21 as first-class targets.
+## 3. Change discipline
 
-Do not rewrite valid modern Java merely to satisfy obsolete tooling. Standard Java 17/21 language features are allowed when appropriate, including records, sealed types, switch expressions, pattern matching, record patterns, and Java 21 virtual-thread APIs.
+- Inspect the nearest relevant implementation/tests first.
+- Make the smallest coherent change.
+- Reuse existing abstractions and vocabulary.
+- Avoid unrelated cleanup/refactoring.
+- Preserve compatibility unless breaking change is requested.
 
-Executable static analysis uses PMD 7. The repository must not introduce `com.alibaba.p3c:p3c-pmd`, PMD 6, or another legacy Java parser as a fallback.
+## 4. Verification budget
 
-P3C provides engineering intent; PMD 7 provides maintained deterministic analysis.
+Do **not** run every check after every edit.
 
-## Priority
+| Change | Minimum useful action |
+|---|---|
+| docs/comments/rules only | no Java build |
+| compile/API-shape risk | `bash scripts/verify-java.sh compile` |
+| behavior change | narrow test, then `bash scripts/verify-java.sh test` |
+| static-rule feedback only | `bash scripts/verify-java.sh static` |
+| normal final check | `bash scripts/verify-java.sh auto` |
+| root build/cross-module/high-risk change | `bash scripts/verify-java.sh all` |
 
-When instructions conflict, use this order:
+Use `MODULES=...` and `TEST=...` to narrow Maven scope when known. Never run `compile` before `test` just for completeness; Maven `test` already compiles. Never run normal `verify` and then another PMD `verify`; `all` performs a single lifecycle with PMD enabled.
 
-1. Explicit task requirements
-2. Existing repository architecture and established local conventions
-3. Applicable project/domain rules in `.ai/rules/`
-4. `.ai/rules/java.md`
-5. `.ai/rules/p3c.md`
-6. General Java conventions
-
-Security, correctness, data integrity, and explicit public contracts are not style preferences and must not be weakened to satisfy a lower-priority style rule.
-
-Do not apply P3C mechanically when an older recommendation conflicts with modern Java, Spring Boot, or the existing repository architecture.
-
-## Before changing code
-
-- Inspect nearby code and tests before implementing.
-- Identify module boundaries, naming conventions, public contracts, persistence pattern, error model, transaction boundaries, security/data scope, and test style relevant to the task.
-- Determine which `.ai/rules/*.md` files apply before editing.
-- Reuse existing abstractions instead of introducing parallel ones.
-- Keep the change scoped to the requested task.
-
-## While changing Java code
-
-- Follow all applicable MUST rules.
-- Prefer simple, explicit code over speculative abstractions.
-- Do not add an interface solely so an implementation can be named `*Impl`.
-- Do not introduce deprecated APIs, unsafe concurrency, hidden null assumptions, unexplained magic values, insecure defaults, or unbounded data operations.
-- Preserve backward compatibility unless the task explicitly allows breaking changes.
-- Avoid unrelated formatting or cleanup churn.
-- Prefer appropriate Java 17/21 APIs and language constructs over Java 8-era boilerplate.
-
-## Local verification
-
-Verification is local. Do not depend on GitHub Actions or another CI service to complete a coding task.
-
-When `scripts/verify-java.sh` exists, use it:
-
-```bash
-# Fast feedback during implementation
-bash scripts/verify-java.sh fast
-
-# Normal Maven lifecycle verification
-bash scripts/verify-java.sh full
-
-# PMD 7 / P3C-aligned static analysis
-bash scripts/verify-java.sh p3c
-
-# Required final local verification when p3c-local is installed
-bash scripts/verify-java.sh all
-```
-
-`all` must not silently skip static analysis. If the `p3c-local` Maven profile is missing, treat that as local-tooling misconfiguration and report it.
-
-The PMD profile must use the maintained PMD 7 runtime defined by this template. A PMD parser error is a tooling failure to investigate, not a reason to downgrade valid Java 17/21 source syntax.
-
-If the script is not present, use the repository's Maven wrapper or Maven commands directly and run the configured PMD 7 profile explicitly.
-
-Run the narrowest relevant test first when that gives faster feedback. If working in one module, module-specific checks may be run before root-level verification.
-
-For behavior changes, use `.ai/rules/testing.md` to determine the appropriate regression/unit/integration coverage.
-
-A task is not complete when the current change introduces:
-
-- compilation failures;
-- failing relevant tests;
-- PMD parser/static-analysis errors;
-- newly introduced static-analysis violations;
-- security or authorization regressions;
-- data-integrity/transaction regressions;
-- accidental API compatibility breaks;
-- obvious violations of the applicable rules above.
-
-Fix violations caused by the current change. Do not mass-refactor unrelated legacy code merely to make the whole repository conform to a newly added rule.
-
-## Review behavior
-
-When reviewing code, prioritize findings in this order:
-
-1. correctness and data integrity;
-2. security and authorization;
-3. concurrency and transaction safety;
-4. API/contract compatibility;
-5. performance/resource risks;
-6. test gaps that can hide meaningful regressions;
-7. maintainability and P3C/style issues.
-
-Report concrete issues with file/line context, triggering conditions, impact, and a suggested correction. Avoid style-only comments when an automatic formatter or linter can resolve them.
+Fix failures introduced by the current change; do not mass-fix unrelated legacy issues.
